@@ -6,6 +6,9 @@ from .views import (
     TagViewSet,
     PublicArticleListView,
     PublicArticleDetailView,
+    user_analytics,
+    site_analytics,
+    article_analytics,
 )
 
 app_name = 'blog'
@@ -20,6 +23,11 @@ urlpatterns = [
     # 公開API（認証不要）
     path('public/articles/', PublicArticleListView.as_view(), name='public-article-list'),
     path('public/articles/<slug:slug>/', PublicArticleDetailView.as_view(), name='public-article-detail'),
+    
+    # 統計・分析API
+    path('analytics/user/', user_analytics, name='user-analytics'),
+    path('analytics/site/', site_analytics, name='site-analytics'),
+    path('analytics/article/<int:article_id>/', article_analytics, name='article-analytics'),
     
     # 管理API（認証必要）
     path('', include(router.urls)),

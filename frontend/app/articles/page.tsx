@@ -433,7 +433,7 @@ export default function ArticlesPage() {
                                     <CardContent>
                                         <Grid container spacing={2}>
                                             {article.featured_image && (
-                                                <Grid item xs={12} sm={3}>
+                                                <Grid size={{ xs: 12, sm: 3 }}>
                                                     <CardMedia
                                                         component="img"
                                                         height="120"
@@ -443,7 +443,7 @@ export default function ArticlesPage() {
                                                     />
                                                 </Grid>
                                             )}
-                                            <Grid item xs={12} sm={article.featured_image ? 9 : 12}>
+                                            <Grid size={{ xs: 12, sm: article.featured_image ? 9 : 12 }}>
                                                 {/* カテゴリ・注目記事バッジ */}
                                                 <Stack direction="row" spacing={1} mb={1}>
                                                     {article.category && (

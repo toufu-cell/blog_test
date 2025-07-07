@@ -1,13 +1,16 @@
 from django.shortcuts import render
 from rest_framework import generics, status, permissions
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
-from django.db.models import Q, F
+from django.db.models import Q, F, Count, Sum, Avg
 from django.utils import timezone
+from datetime import datetime, timedelta
+from django.contrib.auth import get_user_model
 from .models import Article, Category, Tag, ArticleLike, ArticleView
+from comments.models import Comment
 from .serializers import (
     ArticleListSerializer,
     ArticleDetailSerializer,
@@ -18,6 +21,8 @@ from .serializers import (
     ArticleViewSerializer
 )
 from .permissions import IsAuthorOrReadOnly, CanPublishOrReadOnly
+
+User = get_user_model()
 
 
 class CategoryViewSet(ModelViewSet):
@@ -323,3 +328,248 @@ class PublicArticleDetailView(generics.RetrieveAPIView):
         else:
             ip = request.META.get('REMOTE_ADDR')
         return ip
+
+
+# 統計・分析API
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def user_analytics(request):
+    """ユーザー個人の統計データAPI"""
+    user = request.user
+    
+    # 基本統計
+    articles = Article.objects.filter(author=user, status='published')
+    total_articles = articles.count()
+    total_views = articles.aggregate(Sum('view_count'))['view_count__sum'] or 0
+    total_likes = articles.aggregate(Sum('like_count'))['like_count__sum'] or 0
+    total_comments = Comment.objects.filter(article__author=user, is_approved=True).count()
+    
+    # 最近30日の記事投稿数
+    thirty_days_ago = timezone.now() - timedelta(days=30)
+    recent_articles = articles.filter(published_at__gte=thirty_days_ago).count()
+    
+    # 人気記事トップ5
+    popular_articles = articles.order_by('-view_count')[:5].values(
+        'id', 'title', 'slug', 'view_count', 'like_count', 'published_at'
+    )
+    
+    # 最近の活動（最新10記事）
+    recent_activity = articles.order_by('-published_at')[:10].values(
+        'id', 'title', 'slug', 'view_count', 'like_count', 'published_at'
+    )
+    
+    # 月別統計（過去12ヶ月）
+    monthly_stats = []
+    for i in range(12):
+        month_start = (timezone.now().replace(day=1) - timedelta(days=i*30)).replace(day=1)
+        month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+        
+        month_articles = articles.filter(
+            published_at__gte=month_start,
+            published_at__lte=month_end
+        )
+        
+        monthly_stats.insert(0, {
+            'month': month_start.strftime('%Y-%m'),
+            'articles': month_articles.count(),
+            'views': month_articles.aggregate(Sum('view_count'))['view_count__sum'] or 0,
+            'likes': month_articles.aggregate(Sum('like_count'))['like_count__sum'] or 0,
+        })
+    
+    # カテゴリ別統計
+    category_stats = articles.values('category__name').annotate(
+        count=Count('id'),
+        views=Sum('view_count'),
+        likes=Sum('like_count')
+    ).order_by('-count')[:10]
+    
+    return Response({
+        'overview': {
+            'total_articles': total_articles,
+            'total_views': total_views,
+            'total_likes': total_likes,
+            'total_comments': total_comments,
+            'recent_articles': recent_articles,
+            'avg_views_per_article': round(total_views / max(total_articles, 1), 1),
+            'avg_likes_per_article': round(total_likes / max(total_articles, 1), 1),
+        },
+        'popular_articles': list(popular_articles),
+        'recent_activity': list(recent_activity),
+        'monthly_stats': monthly_stats,
+        'category_stats': list(category_stats),
+    })
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def site_analytics(request):
+    """サイト全体の統計データAPI（管理者のみ）"""
+    if not request.user.is_admin:
+        return Response({'error': '権限がありません。'}, status=status.HTTP_403_FORBIDDEN)
+    
+    # 基本統計
+    total_users = User.objects.filter(is_active=True).count()
+    total_articles = Article.objects.filter(status='published').count()
+    total_views = Article.objects.filter(status='published').aggregate(
+        Sum('view_count'))['view_count__sum'] or 0
+    total_likes = Article.objects.filter(status='published').aggregate(
+        Sum('like_count'))['like_count__sum'] or 0
+    total_comments = Comment.objects.filter(is_approved=True).count()
+    total_categories = Category.objects.filter(is_active=True).count()
+    total_tags = Tag.objects.count()
+    
+    # 最近30日の新規登録ユーザー
+    thirty_days_ago = timezone.now() - timedelta(days=30)
+    new_users = User.objects.filter(created_at__gte=thirty_days_ago).count()
+    
+    # 最近30日の新記事
+    new_articles = Article.objects.filter(
+        status='published',
+        published_at__gte=thirty_days_ago
+    ).count()
+    
+    # ユーザー役割別統計
+    user_role_stats = User.objects.filter(is_active=True).values('role').annotate(
+        count=Count('id')
+    ).order_by('role')
+    
+    # 人気記事トップ10
+    popular_articles = Article.objects.filter(status='published').order_by(
+        '-view_count'
+    )[:10].values(
+        'id', 'title', 'slug', 'author__username', 'view_count', 'like_count', 'published_at'
+    )
+    
+    # アクティブユーザートップ10（記事投稿数順）
+    active_authors = User.objects.annotate(
+        article_count=Count('articles', filter=Q(articles__status='published'))
+    ).filter(article_count__gt=0).order_by('-article_count')[:10].values(
+        'id', 'username', 'first_name', 'last_name', 'article_count'
+    )
+    
+    # 月別成長統計（過去12ヶ月）
+    growth_stats = []
+    for i in range(12):
+        month_start = (timezone.now().replace(day=1) - timedelta(days=i*30)).replace(day=1)
+        month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+        
+        month_users = User.objects.filter(
+            created_at__gte=month_start,
+            created_at__lte=month_end
+        ).count()
+        
+        month_articles = Article.objects.filter(
+            status='published',
+            published_at__gte=month_start,
+            published_at__lte=month_end
+        ).count()
+        
+        growth_stats.insert(0, {
+            'month': month_start.strftime('%Y-%m'),
+            'new_users': month_users,
+            'new_articles': month_articles,
+        })
+    
+    # カテゴリ別記事統計
+    category_stats = Category.objects.filter(is_active=True).annotate(
+        article_count=Count('articles', filter=Q(articles__status='published')),
+        total_views=Sum('articles__view_count', filter=Q(articles__status='published')),
+        total_likes=Sum('articles__like_count', filter=Q(articles__status='published'))
+    ).order_by('-article_count')[:10].values(
+        'name', 'article_count', 'total_views', 'total_likes'
+    )
+    
+    return Response({
+        'overview': {
+            'total_users': total_users,
+            'total_articles': total_articles,
+            'total_views': total_views,
+            'total_likes': total_likes,
+            'total_comments': total_comments,
+            'total_categories': total_categories,
+            'total_tags': total_tags,
+            'new_users_30d': new_users,
+            'new_articles_30d': new_articles,
+        },
+        'user_role_stats': list(user_role_stats),
+        'popular_articles': list(popular_articles),
+        'active_authors': list(active_authors),
+        'growth_stats': growth_stats,
+        'category_stats': list(category_stats),
+    })
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def article_analytics(request, article_id):
+    """個別記事の詳細分析API"""
+    try:
+        article = Article.objects.get(id=article_id)
+    except Article.DoesNotExist:
+        return Response({'error': '記事が見つかりません。'}, status=status.HTTP_404_NOT_FOUND)
+    
+    # 権限チェック：自分の記事または編集者以上
+    if article.author != request.user and not request.user.is_editor:
+        return Response({'error': '権限がありません。'}, status=status.HTTP_403_FORBIDDEN)
+    
+    # 基本統計
+    view_count = article.view_count
+    like_count = article.like_count
+    comment_count = Comment.objects.filter(article=article, is_approved=True).count()
+    
+    # 日別閲覧数（過去30日）
+    thirty_days_ago = timezone.now() - timedelta(days=30)
+    daily_views = []
+    for i in range(30):
+        date = (timezone.now() - timedelta(days=i)).date()
+        views = ArticleView.objects.filter(
+            article=article,
+            created_at__date=date
+        ).count()
+        daily_views.insert(0, {
+            'date': date.strftime('%Y-%m-%d'),
+            'views': views
+        })
+    
+    # 閲覧者統計
+    total_viewers = ArticleView.objects.filter(article=article).values('ip_address').distinct().count()
+    authenticated_viewers = ArticleView.objects.filter(
+        article=article, user__isnull=False
+    ).values('user').distinct().count()
+    
+    # 最近のコメント（5件）
+    recent_comments = Comment.objects.filter(
+        article=article, is_approved=True
+    ).order_by('-created_at')[:5].values(
+        'id', 'author__username', 'content', 'created_at'
+    )
+    
+    # 関連記事のパフォーマンス比較
+    related_articles = Article.objects.filter(
+        category=article.category,
+        status='published'
+    ).exclude(id=article.id).order_by('-view_count')[:5].values(
+        'id', 'title', 'slug', 'view_count', 'like_count'
+    )
+    
+    return Response({
+        'article': {
+            'id': article.id,
+            'title': article.title,
+            'slug': article.slug,
+            'published_at': article.published_at,
+            'author': article.author.username,
+            'category': article.category.name if article.category else None,
+        },
+        'stats': {
+            'view_count': view_count,
+            'like_count': like_count,
+            'comment_count': comment_count,
+            'total_viewers': total_viewers,
+            'authenticated_viewers': authenticated_viewers,
+            'engagement_rate': round((like_count + comment_count) / max(view_count, 1) * 100, 2),
+        },
+        'daily_views': daily_views,
+        'recent_comments': list(recent_comments),
+        'related_articles': list(related_articles),
+    })

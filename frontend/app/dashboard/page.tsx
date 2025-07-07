@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -25,10 +25,13 @@ import {
     Comment,
 } from '@mui/icons-material'
 import { useAuth } from '@/lib/contexts/AuthContext'
+import { analyticsService, UserAnalyticsData } from '@/lib/services/analytics'
 
 export default function DashboardPage() {
     const router = useRouter()
     const { user, isAuthenticated, isLoading } = useAuth()
+    const [userAnalytics, setUserAnalytics] = useState<UserAnalyticsData | null>(null)
+    const [analyticsLoading, setAnalyticsLoading] = useState(false)
 
     // 未認証の場合はログインページにリダイレクト
     useEffect(() => {
@@ -36,6 +39,25 @@ export default function DashboardPage() {
             router.replace('/auth/login')
         }
     }, [isAuthenticated, isLoading, router])
+
+    // ユーザー分析データを取得
+    useEffect(() => {
+        if (isAuthenticated && user) {
+            loadUserAnalytics()
+        }
+    }, [isAuthenticated, user])
+
+    const loadUserAnalytics = async () => {
+        try {
+            setAnalyticsLoading(true)
+            const data = await analyticsService.getUserAnalytics()
+            setUserAnalytics(data)
+        } catch (error) {
+            console.error('Analytics loading error:', error)
+        } finally {
+            setAnalyticsLoading(false)
+        }
+    }
 
     if (isLoading) {
         return (
@@ -112,7 +134,11 @@ export default function DashboardPage() {
                     <CardContent sx={{ textAlign: 'center' }}>
                         <Visibility sx={{ fontSize: 48, color: 'success.main', mb: 2 }} />
                         <Typography variant="h4" color="success.main" gutterBottom>
-                            -
+                            {analyticsLoading ? (
+                                <CircularProgress size={24} />
+                            ) : (
+                                userAnalytics?.overview.total_views.toLocaleString() || '0'
+                            )}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
                             総閲覧数
@@ -124,7 +150,11 @@ export default function DashboardPage() {
                     <CardContent sx={{ textAlign: 'center' }}>
                         <ThumbUp sx={{ fontSize: 48, color: 'warning.main', mb: 2 }} />
                         <Typography variant="h4" color="warning.main" gutterBottom>
-                            -
+                            {analyticsLoading ? (
+                                <CircularProgress size={24} />
+                            ) : (
+                                userAnalytics?.overview.total_likes.toLocaleString() || '0'
+                            )}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
                             総いいね数
