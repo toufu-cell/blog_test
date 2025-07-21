@@ -33,7 +33,6 @@ import {
     PersonAdd,
     Logout,
     Settings,
-    CategoryOutlined,
 } from '@mui/icons-material'
 import { useAuth } from '@/lib/contexts/AuthContext'
 
@@ -71,7 +70,6 @@ const Navigation: React.FC = () => {
     const publicMenuItems = [
         { label: 'ホーム', href: '/', icon: <Home /> },
         { label: '記事一覧', href: '/articles', icon: <Article /> },
-        { label: 'カテゴリ', href: '/categories', icon: <CategoryOutlined /> },
     ]
 
     // 認証済みユーザー用メニューアイテム

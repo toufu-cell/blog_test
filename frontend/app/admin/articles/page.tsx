@@ -55,13 +55,12 @@ import {
 } from '@mui/icons-material'
 import { useAuth } from '@/lib/contexts/AuthContext'
 import { blogService } from '@/lib/services/blog'
-import { Article, Category, Tag, SearchFilters } from '@/types'
+import { Article, Tag, SearchFilters } from '@/types'
 
 export default function ArticlesManagePage() {
     const router = useRouter()
     const { user, isAuthenticated, isLoading } = useAuth()
     const [articles, setArticles] = useState<Article[]>([])
-    const [categories, setCategories] = useState<Category[]>([])
     const [tags, setTags] = useState<Tag[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -71,7 +70,6 @@ export default function ArticlesManagePage() {
     const [filters, setFilters] = useState<SearchFilters>({
         search: '',
         status: '',
-        category: undefined,
         tags: [],
         is_featured: undefined,
         ordering: '-created_at',
@@ -102,10 +100,10 @@ export default function ArticlesManagePage() {
         }
     }, [isAuthenticated, filters])
 
-    // カテゴリとタグの取得
+    // タグの取得
     useEffect(() => {
         if (isAuthenticated) {
-            loadCategoriesAndTags()
+            loadTags()
         }
     }, [isAuthenticated])
 
@@ -124,16 +122,12 @@ export default function ArticlesManagePage() {
         }
     }
 
-    const loadCategoriesAndTags = async () => {
+    const loadTags = async () => {
         try {
-            const [categoriesResponse, tagsResponse] = await Promise.all([
-                blogService.getCategories(),
-                blogService.getTags()
-            ])
-            setCategories(categoriesResponse.results)
+            const tagsResponse = await blogService.getTags()
             setTags(tagsResponse.results)
         } catch (err) {
-            console.error('カテゴリ・タグの取得に失敗:', err)
+            console.error('タグの取得に失敗:', err)
         }
     }
 
@@ -145,9 +139,7 @@ export default function ArticlesManagePage() {
         setFilters({ ...filters, status: e.target.value, page: 1 })
     }
 
-    const handleCategoryChange = (e: any) => {
-        setFilters({ ...filters, category: e.target.value || undefined, page: 1 })
-    }
+
 
     const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
         setFilters({ ...filters, page: value })
@@ -324,21 +316,7 @@ export default function ArticlesManagePage() {
                             </Select>
                         </FormControl>
 
-                        <FormControl>
-                            <InputLabel>カテゴリ</InputLabel>
-                            <Select
-                                value={filters.category || ''}
-                                onChange={handleCategoryChange}
-                                label="カテゴリ"
-                            >
-                                <MenuItem value="">すべて</MenuItem>
-                                {categories.map((category) => (
-                                    <MenuItem key={category.id} value={category.id}>
-                                        {category.name}
-                                    </MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
+
 
                         <Button
                             variant="outlined"
@@ -346,7 +324,6 @@ export default function ArticlesManagePage() {
                             onClick={() => setFilters({
                                 search: '',
                                 status: '',
-                                category: undefined,
                                 tags: [],
                                 is_featured: undefined,
                                 ordering: '-created_at',
@@ -367,7 +344,6 @@ export default function ArticlesManagePage() {
                             <TableRow>
                                 <TableCell>タイトル</TableCell>
                                 <TableCell>著者</TableCell>
-                                <TableCell>カテゴリ</TableCell>
                                 <TableCell>状態</TableCell>
                                 <TableCell>統計</TableCell>
                                 <TableCell>更新日</TableCell>
@@ -377,13 +353,13 @@ export default function ArticlesManagePage() {
                         <TableBody>
                             {loading ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>
+                                    <TableCell colSpan={6} sx={{ textAlign: 'center', py: 4 }}>
                                         <CircularProgress />
                                     </TableCell>
                                 </TableRow>
                             ) : articles.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>
+                                    <TableCell colSpan={6} sx={{ textAlign: 'center', py: 4 }}>
                                         記事が見つかりませんでした
                                     </TableCell>
                                 </TableRow>
@@ -432,19 +408,7 @@ export default function ArticlesManagePage() {
                                             </Box>
                                         </TableCell>
 
-                                        <TableCell>
-                                            {article.category ? (
-                                                <Chip
-                                                    label={article.category.name}
-                                                    size="small"
-                                                    sx={{ backgroundColor: article.category.color + '20', color: article.category.color }}
-                                                />
-                                            ) : (
-                                                <Typography variant="body2" color="text.secondary">
-                                                    未分類
-                                                </Typography>
-                                            )}
-                                        </TableCell>
+
 
                                         <TableCell>
                                             {getStatusChip(article.status)}

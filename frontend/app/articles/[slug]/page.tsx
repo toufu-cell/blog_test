@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import {
     Container,
     Typography,
@@ -11,14 +11,17 @@ import {
     Divider,
     CircularProgress,
     Alert,
+    IconButton,
 } from '@mui/material'
-import { CalendarMonth, Visibility, ThumbUp, Share } from '@mui/icons-material'
+import { CalendarMonth, Visibility, ThumbUp, ThumbUpOutlined, Share } from '@mui/icons-material'
 import { formatDistanceToNow } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import useSWR from 'swr'
 import { getArticleBySlug } from '../../../lib/services/blog'
+import { likeArticle, unlikeArticle } from '../../../lib/services/blog'
 import CommentList from '../../../components/comments/CommentList'
 import { User, Tag } from '../../../types'
+import { useAuth } from '../../../lib/contexts/AuthContext'
 
 interface ArticlePageProps {
     params: {
@@ -27,13 +30,54 @@ interface ArticlePageProps {
 }
 
 export default function ArticlePage({ params }: ArticlePageProps) {
-    const { data: article, error, isLoading } = useSWR(
+    const { user } = useAuth()
+    const { data: article, error, isLoading, mutate } = useSWR(
         ['article', params.slug],
         () => getArticleBySlug(params.slug),
         {
             revalidateOnFocus: false,
         }
     )
+
+    const [isLiked, setIsLiked] = useState(false)
+    const [likeCount, setLikeCount] = useState(0)
+    const [likeLoading, setLikeLoading] = useState(false)
+    const [likeError, setLikeError] = useState<string | null>(null)
+
+    // 記事データが取得されたらいいね状態を初期化
+    React.useEffect(() => {
+        if (article) {
+            setIsLiked(article.is_liked || false)
+            setLikeCount(article.like_count)
+        }
+    }, [article])
+
+    const handleLike = async () => {
+        if (!user || !article) return
+
+        setLikeLoading(true)
+        setLikeError(null)
+
+        try {
+            if (isLiked) {
+                await unlikeArticle(article.id)
+                setIsLiked(false)
+                setLikeCount(prev => prev - 1)
+            } else {
+                await likeArticle(article.id)
+                setIsLiked(true)
+                setLikeCount(prev => prev + 1)
+            }
+
+            // 記事データを再取得してキャッシュを更新
+            mutate()
+        } catch (error) {
+            setLikeError('いいねの処理でエラーが発生しました')
+            console.error('いいねエラー:', error)
+        } finally {
+            setLikeLoading(false)
+        }
+    }
 
     const formatDate = (dateString: string) => {
         return formatDistanceToNow(new Date(dateString), {
@@ -104,26 +148,45 @@ export default function ArticlePage({ params }: ArticlePageProps) {
                                     {article.view_count} 回表示
                                 </Typography>
                             </Box>
-                            <Box display="flex" alignItems="center" gap={0.5}>
-                                <ThumbUp fontSize="small" color="disabled" />
-                                <Typography variant="caption" color="text.secondary">
-                                    {article.like_count}
-                                </Typography>
-                            </Box>
                         </Box>
                     </Box>
                 </Box>
 
-                {/* カテゴリ・タグ */}
-                <Stack direction="row" spacing={1} flexWrap="wrap" mb={3}>
-                    {article.category && (
-                        <Chip
-                            label={article.category.name}
-                            variant="filled"
-                            color="primary"
-                            size="small"
-                        />
+                {/* いいねボタンとカウント */}
+                <Box display="flex" alignItems="center" gap={1} mb={3}>
+                    <IconButton
+                        onClick={handleLike}
+                        disabled={!user || likeLoading}
+                        color={isLiked ? 'primary' : 'default'}
+                        sx={{
+                            border: 1,
+                            borderColor: isLiked ? 'primary.main' : 'grey.300',
+                            '&:hover': {
+                                borderColor: 'primary.main',
+                                backgroundColor: isLiked ? 'primary.50' : 'grey.50'
+                            }
+                        }}
+                    >
+                        {isLiked ? <ThumbUp /> : <ThumbUpOutlined />}
+                    </IconButton>
+                    <Typography variant="body2" color="text.secondary">
+                        {likeCount} いいね
+                    </Typography>
+                    {!user && (
+                        <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                            ログインしていいねをつけよう
+                        </Typography>
                     )}
+                </Box>
+
+                {likeError && (
+                    <Alert severity="error" sx={{ mb: 2 }}>
+                        {likeError}
+                    </Alert>
+                )}
+
+                {/* タグ */}
+                <Stack direction="row" spacing={1} flexWrap="wrap" mb={3}>
                     {article.tags.map((tag: Tag) => (
                         <Chip
                             key={tag.id}

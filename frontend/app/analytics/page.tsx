@@ -33,7 +33,6 @@ import {
     Comment,
     Article,
     People,
-    Category,
     LocalOffer,
     Star,
     Timeline,
@@ -415,93 +414,10 @@ export default function AnalyticsPage() {
                             </Grid>
 
                             {/* カテゴリ別統計チャート */}
-                            <Grid size={{ xs: 12, md: 4 }}>
-                                <Card>
-                                    <CardContent>
-                                        <Typography variant="h6" gutterBottom>
-                                            <Category sx={{ mr: 1, verticalAlign: 'middle' }} />
-                                            カテゴリ別記事数
-                                        </Typography>
-                                        {userAnalytics.category_stats.length > 0 ? (
-                                            <Box sx={{ width: '100%', height: 300 }}>
-                                                <ResponsiveContainer>
-                                                    <PieChart>
-                                                        <Pie
-                                                            data={userAnalytics.category_stats.map((cat, index) => ({
-                                                                name: cat.category__name || '未分類',
-                                                                value: cat.count,
-                                                                fill: [
-                                                                    '#1976d2', '#2e7d32', '#ed6c02', '#d32f2f',
-                                                                    '#7b1fa2', '#1565c0', '#388e3c', '#f57c00',
-                                                                    '#c62828', '#512da8'
-                                                                ][index % 10]
-                                                            }))}
-                                                            cx="50%"
-                                                            cy="50%"
-                                                            labelLine={false}
-                                                            label={({ name, percent }) => `${name} ${percent ? (percent * 100).toFixed(0) : 0}%`}
-                                                            outerRadius={80}
-                                                            fill="#8884d8"
-                                                            dataKey="value"
-                                                        />
-                                                        <Tooltip />
-                                                    </PieChart>
-                                                </ResponsiveContainer>
-                                            </Box>
-                                        ) : (
-                                            <Typography variant="body2" color="text.secondary">
-                                                まだ統計データがありません
-                                            </Typography>
-                                        )}
-                                    </CardContent>
-                                </Card>
-                            </Grid>
+
 
                             {/* カテゴリ別詳細統計テーブル */}
-                            <Grid size={12}>
-                                <Card>
-                                    <CardContent>
-                                        <Typography variant="h6" gutterBottom>
-                                            <Category sx={{ mr: 1, verticalAlign: 'middle' }} />
-                                            カテゴリ別詳細統計
-                                        </Typography>
-                                        {userAnalytics.category_stats.length > 0 ? (
-                                            <TableContainer>
-                                                <Table>
-                                                    <TableHead>
-                                                        <TableRow>
-                                                            <TableCell>カテゴリ</TableCell>
-                                                            <TableCell align="right">記事数</TableCell>
-                                                            <TableCell align="right">総閲覧数</TableCell>
-                                                            <TableCell align="right">総いいね数</TableCell>
-                                                            <TableCell align="right">平均閲覧数</TableCell>
-                                                        </TableRow>
-                                                    </TableHead>
-                                                    <TableBody>
-                                                        {userAnalytics.category_stats.map((category) => (
-                                                            <TableRow key={category.category__name || 'uncategorized'}>
-                                                                <TableCell>
-                                                                    {category.category__name || '未分類'}
-                                                                </TableCell>
-                                                                <TableCell align="right">{category.count}</TableCell>
-                                                                <TableCell align="right">{category.views?.toLocaleString() || 0}</TableCell>
-                                                                <TableCell align="right">{category.likes?.toLocaleString() || 0}</TableCell>
-                                                                <TableCell align="right">
-                                                                    {Math.round((category.views || 0) / Math.max(category.count, 1))}
-                                                                </TableCell>
-                                                            </TableRow>
-                                                        ))}
-                                                    </TableBody>
-                                                </Table>
-                                            </TableContainer>
-                                        ) : (
-                                            <Typography variant="body2" color="text.secondary">
-                                                まだ統計データがありません
-                                            </Typography>
-                                        )}
-                                    </CardContent>
-                                </Card>
-                            </Grid>
+
                         </Grid>
                     </Box>
                 )}
@@ -650,26 +566,7 @@ export default function AnalyticsPage() {
                                 </Grid>
 
                                 {/* カテゴリ別記事統計 */}
-                                <Grid size={{ xs: 12, md: 6 }}>
-                                    <Card>
-                                        <CardContent>
-                                            <Typography variant="h6" gutterBottom>
-                                                <Category sx={{ mr: 1, verticalAlign: 'middle' }} />
-                                                カテゴリ別記事統計
-                                            </Typography>
-                                            <List>
-                                                {siteAnalytics.category_stats.slice(0, 5).map((category, index) => (
-                                                    <ListItem key={category.name} divider={index < 4}>
-                                                        <ListItemText
-                                                            primary={category.name}
-                                                            secondary={`${category.article_count}記事 | ${category.total_views?.toLocaleString() || 0}閲覧`}
-                                                        />
-                                                    </ListItem>
-                                                ))}
-                                            </List>
-                                        </CardContent>
-                                    </Card>
-                                </Grid>
+
 
                                 {/* 人気記事全体 */}
                                 <Grid size={12}>

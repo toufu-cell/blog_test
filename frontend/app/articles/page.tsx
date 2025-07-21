@@ -41,13 +41,13 @@ import { formatDistanceToNow } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import Link from 'next/link'
 import useSWR from 'swr'
-import { getPublicArticles, getCategories, getTags } from '../../lib/services/blog'
-import { Article, Category, Tag } from '../../types'
+import { getPublicArticles, getTags } from '../../lib/services/blog'
+import { Article, Tag } from '../../types'
 
 export default function ArticlesPage() {
     const [searchQuery, setSearchQuery] = useState('')
     const [page, setPage] = useState(1)
-    const [selectedCategory, setSelectedCategory] = useState<number | ''>('')
+
     const [selectedTag, setSelectedTag] = useState<number | ''>('')
     const [ordering, setOrdering] = useState('-published_at')
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
@@ -58,7 +58,6 @@ export default function ArticlesPage() {
             search: searchQuery,
             page,
             ordering,
-            category: selectedCategory || undefined,
             tags: selectedTag ? [selectedTag] : undefined,
         }],
         ([_, params]) => getPublicArticles(params),
@@ -67,7 +66,7 @@ export default function ArticlesPage() {
         }
     )
 
-    const { data: categoriesData } = useSWR('categories', () => getCategories({}))
+
     const { data: tagsData } = useSWR('tags', () => getTags({}))
 
     const formatDate = (dateString: string) => {
@@ -86,10 +85,7 @@ export default function ArticlesPage() {
         setPage(1)
     }
 
-    const handleCategoryChange = (categoryId: number | '') => {
-        setSelectedCategory(categoryId)
-        setPage(1)
-    }
+
 
     const handleTagChange = (tagId: number | '') => {
         setSelectedTag(tagId)
@@ -108,7 +104,6 @@ export default function ArticlesPage() {
 
     const clearFilters = () => {
         setSearchQuery('')
-        setSelectedCategory('')
         setSelectedTag('')
         setOrdering('-published_at')
         setPage(1)
@@ -126,7 +121,6 @@ export default function ArticlesPage() {
 
     const articles = articlesData?.results || []
     const totalPages = articlesData ? Math.ceil(articlesData.count / 12) : 0
-    const categories = categoriesData?.results || []
     const tags = tagsData?.results || []
 
     return (
@@ -210,22 +204,6 @@ export default function ArticlesPage() {
                                 <Divider sx={{ mb: 2 }} />
                                 <Box display="flex" gap={2} flexWrap="wrap" alignItems="center">
                                     <FormControl size="small" sx={{ minWidth: 150 }}>
-                                        <InputLabel>カテゴリ</InputLabel>
-                                        <Select
-                                            value={selectedCategory}
-                                            label="カテゴリ"
-                                            onChange={(e) => handleCategoryChange(e.target.value as number | '')}
-                                        >
-                                            <MenuItem value="">すべて</MenuItem>
-                                            {categories.map((category: Category) => (
-                                                <MenuItem key={category.id} value={category.id}>
-                                                    {category.name}
-                                                </MenuItem>
-                                            ))}
-                                        </Select>
-                                    </FormControl>
-
-                                    <FormControl size="small" sx={{ minWidth: 150 }}>
                                         <InputLabel>タグ</InputLabel>
                                         <Select
                                             value={selectedTag}
@@ -286,16 +264,8 @@ export default function ArticlesPage() {
                                     )}
 
                                     <CardContent sx={{ flexGrow: 1 }}>
-                                        {/* カテゴリ・注目記事バッジ */}
+                                        {/* 注目記事バッジ */}
                                         <Stack direction="row" spacing={1} mb={2}>
-                                            {article.category && (
-                                                <Chip
-                                                    label={article.category.name}
-                                                    size="small"
-                                                    color="primary"
-                                                    variant="filled"
-                                                />
-                                            )}
                                             {article.is_featured && (
                                                 <Chip
                                                     label="注目"
@@ -444,16 +414,8 @@ export default function ArticlesPage() {
                                                 </Grid>
                                             )}
                                             <Grid size={{ xs: 12, sm: article.featured_image ? 9 : 12 }}>
-                                                {/* カテゴリ・注目記事バッジ */}
+                                                {/* 注目記事バッジ */}
                                                 <Stack direction="row" spacing={1} mb={1}>
-                                                    {article.category && (
-                                                        <Chip
-                                                            label={article.category.name}
-                                                            size="small"
-                                                            color="primary"
-                                                            variant="filled"
-                                                        />
-                                                    )}
                                                     {article.is_featured && (
                                                         <Chip
                                                             label="注目"

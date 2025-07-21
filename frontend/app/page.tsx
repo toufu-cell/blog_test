@@ -124,16 +124,8 @@ export default function HomePage() {
                 )}
 
                 <CardContent sx={{ flexGrow: 1 }}>
-                  {/* カテゴリ・注目記事バッジ */}
+                  {/* 注目記事バッジ */}
                   <Stack direction="row" spacing={1} mb={2}>
-                    {article.category && (
-                      <Chip
-                        label={article.category.name}
-                        size="small"
-                        color="primary"
-                        variant="filled"
-                      />
-                    )}
                     {article.is_featured && (
                       <Chip
                         label="注目"

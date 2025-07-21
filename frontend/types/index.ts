@@ -56,21 +56,6 @@ export interface RegisterData {
 }
 
 // ブログ関連の型定義
-export interface Category {
-    id: number
-    name: string
-    slug: string
-    description: string
-    parent?: number
-    color: string
-    is_active: boolean
-    sort_order: number
-    created_at: string
-    updated_at: string
-    article_count: number
-    full_path: string
-    children: Category[]
-}
 
 export interface Tag {
     id: number
@@ -91,7 +76,7 @@ export interface Article {
     content?: string
     content_html?: string
     author: User
-    category?: Category
+
     tags: Tag[]
     status: 'draft' | 'published' | 'private' | 'scheduled'
     meta_title?: string
@@ -121,7 +106,7 @@ export interface ArticleCreateData {
     slug?: string
     excerpt?: string
     content: string
-    category_id?: number
+
     tag_ids?: number[]
     status: 'draft' | 'published' | 'private' | 'scheduled'
     meta_title?: string
@@ -195,7 +180,6 @@ export interface FormErrors {
 // 検索・フィルター関連の型定義
 export interface SearchFilters {
     search?: string
-    category?: number
     tags?: number[]
     author?: number
     status?: string

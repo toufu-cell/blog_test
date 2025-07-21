@@ -43,7 +43,7 @@
 - Next.js 14
 - TypeScript
 - Material-UI (MUI)
-- SWR (データフェッチング)
+- SWR（データフェッチング）
 - Tailwind CSS
 
 ## プロジェクト構成
@@ -86,9 +86,9 @@ npm run dev
 
 ## 開発環境URL
 
-- フロントエンド: http://localhost:3000
+- フロントエンド： http://localhost:3000
 - バックエンドAPI: http://localhost:8000
-- Django管理画面: http://localhost:8000/admin
+- Django管理画面： http://localhost:8000/admin
 
 ## 主要API エンドポイント
 

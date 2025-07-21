@@ -40,8 +40,8 @@ export default function AboutPage() {
         },
         {
             icon: <CategoryIcon color="primary" />,
-            title: 'カテゴリ・タグ',
-            description: '記事を整理するためのカテゴリとタグ機能'
+            title: 'タグ',
+            description: '記事を整理するためのタグ機能'
         },
         {
             icon: <CommentIcon color="primary" />,

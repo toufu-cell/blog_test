@@ -166,10 +166,14 @@ export default function DashboardPage() {
                     <CardContent sx={{ textAlign: 'center' }}>
                         <Comment sx={{ fontSize: 48, color: 'info.main', mb: 2 }} />
                         <Typography variant="h4" color="info.main" gutterBottom>
-                            {user.comment_count || 0}
+                            {analyticsLoading ? (
+                                <CircularProgress size={24} />
+                            ) : (
+                                userAnalytics?.overview.total_comments.toLocaleString() || '0'
+                            )}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                            コメント数
+                            受信コメント数
                         </Typography>
                     </CardContent>
                 </Card>

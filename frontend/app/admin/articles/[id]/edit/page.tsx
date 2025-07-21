@@ -85,7 +85,7 @@ export default function EditArticlePage() {
         slug: '',
         excerpt: '',
         content: '',
-        category_id: undefined,
+
         tag_ids: [],
         status: 'draft',
         meta_title: '',
@@ -99,8 +99,7 @@ export default function EditArticlePage() {
         is_pinned: false,
     })
 
-    // カテゴリ・タグ
-    const [categories, setCategories] = useState<Category[]>([])
+    // タグ
     const [tags, setTags] = useState<Tag[]>([])
 
     // 画像プレビュー
@@ -126,14 +125,12 @@ export default function EditArticlePage() {
             setInitialLoading(true)
             setError(null)
 
-            const [articleData, categoriesResponse, tagsResponse] = await Promise.all([
+            const [articleData, tagsResponse] = await Promise.all([
                 blogService.getArticle(parseInt(articleId)),
-                blogService.getCategories(),
                 blogService.getTags()
             ])
 
             setArticle(articleData)
-            setCategories(categoriesResponse.results)
             setTags(tagsResponse.results)
 
             // フォームデータを設定
@@ -142,7 +139,7 @@ export default function EditArticlePage() {
                 slug: articleData.slug,
                 excerpt: articleData.excerpt,
                 content: articleData.content,
-                category_id: articleData.category?.id,
+
                 tag_ids: articleData.tags.map(tag => tag.id),
                 status: articleData.status,
                 meta_title: articleData.meta_title || '',
@@ -624,25 +621,10 @@ export default function EditArticlePage() {
                         <Card>
                             <CardContent>
                                 <Typography variant="h6" gutterBottom>
-                                    分類
+                                    タグ
                                 </Typography>
 
                                 <Stack spacing={2}>
-                                    <FormControl fullWidth>
-                                        <InputLabel>カテゴリ</InputLabel>
-                                        <Select
-                                            value={formData.category_id || ''}
-                                            onChange={(e) => handleInputChange('category_id', e.target.value || undefined)}
-                                            label="カテゴリ"
-                                        >
-                                            <MenuItem value="">未分類</MenuItem>
-                                            {categories.map((category) => (
-                                                <MenuItem key={category.id} value={category.id}>
-                                                    {category.name}
-                                                </MenuItem>
-                                            ))}
-                                        </Select>
-                                    </FormControl>
 
                                     <FormControl fullWidth>
                                         <InputLabel>タグ</InputLabel>
