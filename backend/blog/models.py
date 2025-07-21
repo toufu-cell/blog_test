@@ -9,52 +9,6 @@ from django.utils.html import mark_safe
 User = get_user_model()
 
 
-class Category(models.Model):
-    """記事カテゴリ"""
-    
-    name = models.CharField('カテゴリ名', max_length=100, unique=True)
-    slug = models.SlugField('スラグ', max_length=100, unique=True, blank=True)
-    description = models.TextField('説明', blank=True)
-    parent = models.ForeignKey(
-        'self', 
-        verbose_name='親カテゴリ', 
-        null=True, 
-        blank=True, 
-        on_delete=models.CASCADE,
-        related_name='children'
-    )
-    color = models.CharField('カラーコード', max_length=7, default='#007bff')
-    is_active = models.BooleanField('有効', default=True)
-    sort_order = models.PositiveIntegerField('表示順', default=0)
-    created_at = models.DateTimeField('作成日時', auto_now_add=True)
-    updated_at = models.DateTimeField('更新日時', auto_now=True)
-    
-    class Meta:
-        verbose_name = 'カテゴリ'
-        verbose_name_plural = 'カテゴリ'
-        ordering = ['sort_order', 'name']
-        db_table = 'blog_category'
-    
-    def save(self, *args, **kwargs):
-        if not self.slug:
-            self.slug = slugify(self.name)
-        super().save(*args, **kwargs)
-    
-    def __str__(self):
-        return self.name
-    
-    @property
-    def full_path(self):
-        """階層構造を含む完全なパス"""
-        if self.parent:
-            return f"{self.parent.full_path} > {self.name}"
-        return self.name
-    
-    def get_article_count(self):
-        """このカテゴリに属する記事数"""
-        return self.articles.filter(status='published').count()
-
-
 class Tag(models.Model):
     """記事タグ"""
     
@@ -120,13 +74,6 @@ class Article(models.Model):
         on_delete=models.CASCADE,
         related_name='articles'
     )
-    category = models.ForeignKey(
-        Category, 
-        verbose_name='カテゴリ', 
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name='articles'
-    )
     tags = models.ManyToManyField(
         Tag, 
         verbose_name='タグ', 
@@ -176,7 +123,6 @@ class Article(models.Model):
         indexes = [
             models.Index(fields=['status', 'published_at']),
             models.Index(fields=['author', 'status']),
-            models.Index(fields=['category', 'status']),
         ]
     
     def save(self, *args, **kwargs):
@@ -222,10 +168,15 @@ class Article(models.Model):
         return max(1, round(word_count / words_per_minute))
     
     def get_related_articles(self, limit=5):
-        """関連記事を取得"""
+        """関連記事を取得（タグベースで検索）"""
+        if not self.tags.exists():
+            return Article.objects.published().exclude(id=self.id)[:limit]
+        
+        # 共通のタグを持つ記事を取得
+        tag_ids = list(self.tags.values_list('id', flat=True))
         return Article.objects.published().filter(
-            category=self.category
-        ).exclude(id=self.id)[:limit]
+            tags__in=tag_ids
+        ).exclude(id=self.id).distinct()[:limit]
     
     def increment_view_count(self):
         """表示回数をインクリメント"""

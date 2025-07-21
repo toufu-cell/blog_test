@@ -2,7 +2,6 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     ArticleViewSet,
-    CategoryViewSet,
     TagViewSet,
     PublicArticleListView,
     PublicArticleDetailView,
@@ -16,7 +15,6 @@ app_name = 'blog'
 # API Router
 router = DefaultRouter()
 router.register(r'articles', ArticleViewSet, basename='articles')
-router.register(r'categories', CategoryViewSet, basename='categories')
 router.register(r'tags', TagViewSet, basename='tags')
 
 urlpatterns = [

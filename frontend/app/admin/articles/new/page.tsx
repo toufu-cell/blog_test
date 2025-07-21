@@ -30,6 +30,7 @@ import {
     AccordionSummary,
     AccordionDetails,
     Stack,
+    Autocomplete,
 } from '@mui/material'
 import {
     ArrowBack,
@@ -43,7 +44,7 @@ import {
 } from '@mui/icons-material'
 import { useAuth } from '@/lib/contexts/AuthContext'
 import { blogService } from '@/lib/services/blog'
-import { Article, ArticleCreateData, Category, Tag } from '@/types'
+import { Article, ArticleCreateData, Tag } from '@/types'
 
 interface TabPanelProps {
     children?: React.ReactNode
@@ -81,7 +82,6 @@ export default function NewArticlePage() {
         slug: '',
         excerpt: '',
         content: '',
-
         tag_ids: [],
         status: 'draft',
         meta_title: '',
@@ -97,6 +97,7 @@ export default function NewArticlePage() {
 
     // タグ
     const [tags, setTags] = useState<Tag[]>([])
+    const [selectedTags, setSelectedTags] = useState<string[]>([])
 
     // 画像プレビュー
     const [featuredImagePreview, setFeaturedImagePreview] = useState<string>('')
@@ -161,9 +162,14 @@ export default function NewArticlePage() {
         }
     }
 
-    const handleTagChange = (event: any) => {
-        const value = event.target.value as number[]
-        setFormData({ ...formData, tag_ids: value })
+    const handleTagChange = (event: any, newValue: string[]) => {
+        setSelectedTags(newValue)
+        // 選択されたタグ名からIDを取得、新しいタグの場合は名前をそのまま保存
+        const tagData = newValue.map(tagName => {
+            const existingTag = tags.find(t => t.name === tagName)
+            return existingTag ? existingTag.id : tagName
+        })
+        setFormData({ ...formData, tag_ids: tagData })
     }
 
     const handleSubmit = async (status: 'draft' | 'published') => {
@@ -558,37 +564,40 @@ export default function NewArticlePage() {
                                 </Typography>
 
                                 <Stack spacing={2}>
-
-                                    <FormControl fullWidth>
-                                        <InputLabel>タグ</InputLabel>
-                                        <Select
-                                            multiple
-                                            value={formData.tag_ids || []}
-                                            onChange={handleTagChange}
-                                            input={<OutlinedInput label="タグ" />}
-                                            renderValue={(selected) => (
-                                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                                    {(selected as number[]).map((value) => {
-                                                        const tag = tags.find(t => t.id === value)
-                                                        return tag ? (
-                                                            <Chip
-                                                                key={value}
-                                                                label={tag.name}
-                                                                size="small"
-                                                                sx={{ backgroundColor: tag.color + '20', color: tag.color }}
-                                                            />
-                                                        ) : null
-                                                    })}
-                                                </Box>
-                                            )}
-                                        >
-                                            {tags.map((tag) => (
-                                                <MenuItem key={tag.id} value={tag.id}>
-                                                    {tag.name}
-                                                </MenuItem>
-                                            ))}
-                                        </Select>
-                                    </FormControl>
+                                    <Autocomplete
+                                        multiple
+                                        freeSolo
+                                        options={tags.map(tag => tag.name)}
+                                        value={selectedTags}
+                                        onChange={handleTagChange}
+                                        renderTags={(value, getTagProps) =>
+                                            value.map((option, index) => {
+                                                const existingTag = tags.find(t => t.name === option)
+                                                return (
+                                                    <Chip
+                                                        variant="outlined"
+                                                        label={option}
+                                                        size="small"
+                                                        {...getTagProps({ index })}
+                                                        key={index}
+                                                        sx={{
+                                                            backgroundColor: existingTag ? existingTag.color + '20' : '#f5f5f5',
+                                                            color: existingTag ? existingTag.color : '#666',
+                                                            borderColor: existingTag ? existingTag.color : '#ccc'
+                                                        }}
+                                                    />
+                                                )
+                                            })
+                                        }
+                                        renderInput={(params) => (
+                                            <TextField
+                                                {...params}
+                                                label="タグを入力または選択"
+                                                placeholder="新しいタグを追加..."
+                                                helperText="既存のタグから選択するか、新しいタグ名を入力してEnterを押してください"
+                                            />
+                                        )}
+                                    />
                                 </Stack>
                             </CardContent>
                         </Card>

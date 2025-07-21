@@ -9,13 +9,12 @@ from django.db.models import Q, F, Count, Sum, Avg
 from django.utils import timezone
 from datetime import datetime, timedelta
 from django.contrib.auth import get_user_model
-from .models import Article, Category, Tag, ArticleLike, ArticleView
+from .models import Article, Tag, ArticleLike, ArticleView
 from comments.models import Comment
 from .serializers import (
     ArticleListSerializer,
     ArticleDetailSerializer,
     ArticleCreateUpdateSerializer,
-    CategorySerializer,
     TagSerializer,
     ArticleLikeSerializer,
     ArticleViewSerializer
@@ -23,44 +22,6 @@ from .serializers import (
 from .permissions import IsAuthorOrReadOnly, CanPublishOrReadOnly
 
 User = get_user_model()
-
-
-class CategoryViewSet(ModelViewSet):
-    """カテゴリ管理API"""
-    
-    queryset = Category.objects.filter(is_active=True)
-    serializer_class = CategorySerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-    filterset_fields = ['parent', 'is_active']
-    search_fields = ['name', 'description']
-    ordering_fields = ['sort_order', 'name', 'created_at']
-    ordering = ['sort_order', 'name']
-    
-    def get_permissions(self):
-        """読み取りは全ユーザー、書き込みは編集者以上"""
-        if self.action in ['list', 'retrieve']:
-            self.permission_classes = [permissions.AllowAny]
-        else:
-            self.permission_classes = [permissions.IsAuthenticated]
-        return super().get_permissions()
-    
-    def perform_create(self, serializer):
-        # 編集者以上のみが作成可能
-        if not self.request.user.is_editor:
-            raise permissions.PermissionDenied("カテゴリの作成権限がありません。")
-        serializer.save()
-    
-    def perform_update(self, serializer):
-        # 編集者以上のみが更新可能
-        if not self.request.user.is_editor:
-            raise permissions.PermissionDenied("カテゴリの編集権限がありません。")
-        serializer.save()
-    
-    def perform_destroy(self, instance):
-        # 管理者のみが削除可能
-        if not self.request.user.is_admin:
-            raise permissions.PermissionDenied("カテゴリの削除権限がありません。")
-        instance.delete()
 
 
 class TagViewSet(ModelViewSet):
@@ -94,7 +55,7 @@ class ArticleViewSet(ModelViewSet):
     queryset = Article.objects.all()
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly, CanPublishOrReadOnly]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['status', 'category', 'tags', 'author', 'is_featured', 'is_pinned']
+    filterset_fields = ['status', 'tags', 'author', 'is_featured', 'is_pinned']
     search_fields = ['title', 'excerpt', 'content']
     ordering_fields = ['published_at', 'created_at', 'updated_at', 'view_count', 'like_count']
     ordering = ['-published_at', '-created_at']
@@ -288,7 +249,7 @@ class PublicArticleListView(generics.ListAPIView):
     serializer_class = ArticleListSerializer
     permission_classes = [permissions.AllowAny]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['category', 'tags', 'author', 'is_featured']
+    filterset_fields = ['tags', 'author', 'is_featured']
     search_fields = ['title', 'excerpt', 'content']
     ordering_fields = ['published_at', 'view_count', 'like_count']
     ordering = ['-published_at']
@@ -376,12 +337,12 @@ def user_analytics(request):
             'likes': month_articles.aggregate(Sum('like_count'))['like_count__sum'] or 0,
         })
     
-    # カテゴリ別統計
-    category_stats = articles.values('category__name').annotate(
+    # タグ別統計
+    tag_stats = articles.values('tags__name').annotate(
         count=Count('id'),
         views=Sum('view_count'),
         likes=Sum('like_count')
-    ).order_by('-count')[:10]
+    ).filter(tags__name__isnull=False).order_by('-count')[:10]
     
     return Response({
         'overview': {
@@ -396,7 +357,7 @@ def user_analytics(request):
         'popular_articles': list(popular_articles),
         'recent_activity': list(recent_activity),
         'monthly_stats': monthly_stats,
-        'category_stats': list(category_stats),
+        'tag_stats': list(tag_stats),
     })
 
 
@@ -415,7 +376,6 @@ def site_analytics(request):
     total_likes = Article.objects.filter(status='published').aggregate(
         Sum('like_count'))['like_count__sum'] or 0
     total_comments = Comment.objects.filter(is_approved=True).count()
-    total_categories = Category.objects.filter(is_active=True).count()
     total_tags = Tag.objects.count()
     
     # 最近30日の新規登録ユーザー
@@ -470,8 +430,8 @@ def site_analytics(request):
             'new_articles': month_articles,
         })
     
-    # カテゴリ別記事統計
-    category_stats = Category.objects.filter(is_active=True).annotate(
+    # タグ別記事統計
+    tag_stats = Tag.objects.filter(is_active=True).annotate(
         article_count=Count('articles', filter=Q(articles__status='published')),
         total_views=Sum('articles__view_count', filter=Q(articles__status='published')),
         total_likes=Sum('articles__like_count', filter=Q(articles__status='published'))
@@ -486,7 +446,6 @@ def site_analytics(request):
             'total_views': total_views,
             'total_likes': total_likes,
             'total_comments': total_comments,
-            'total_categories': total_categories,
             'total_tags': total_tags,
             'new_users_30d': new_users,
             'new_articles_30d': new_articles,
@@ -495,7 +454,7 @@ def site_analytics(request):
         'popular_articles': list(popular_articles),
         'active_authors': list(active_authors),
         'growth_stats': growth_stats,
-        'category_stats': list(category_stats),
+        'tag_stats': list(tag_stats),
     })
 
 
@@ -544,13 +503,17 @@ def article_analytics(request, article_id):
         'id', 'author__username', 'content', 'created_at'
     )
     
-    # 関連記事のパフォーマンス比較
-    related_articles = Article.objects.filter(
-        category=article.category,
-        status='published'
-    ).exclude(id=article.id).order_by('-view_count')[:5].values(
-        'id', 'title', 'slug', 'view_count', 'like_count'
-    )
+    # 関連記事のパフォーマンス比較（タグベース）
+    related_articles = article.get_related_articles(limit=5)
+    related_articles_data = []
+    for related in related_articles:
+        related_articles_data.append({
+            'id': related.id,
+            'title': related.title,
+            'slug': related.slug,
+            'view_count': related.view_count,
+            'like_count': related.like_count
+        })
     
     return Response({
         'article': {
@@ -559,7 +522,7 @@ def article_analytics(request, article_id):
             'slug': article.slug,
             'published_at': article.published_at,
             'author': article.author.username,
-            'category': article.category.name if article.category else None,
+            'tags': [tag.name for tag in article.tags.all()],
         },
         'stats': {
             'view_count': view_count,
@@ -571,5 +534,5 @@ def article_analytics(request, article_id):
         },
         'daily_views': daily_views,
         'recent_comments': list(recent_comments),
-        'related_articles': list(related_articles),
+        'related_articles': related_articles_data,
     })

@@ -107,7 +107,7 @@ export interface ArticleCreateData {
     excerpt?: string
     content: string
 
-    tag_ids?: number[]
+    tag_ids?: (number | string)[]
     status: 'draft' | 'published' | 'private' | 'scheduled'
     meta_title?: string
     meta_description?: string

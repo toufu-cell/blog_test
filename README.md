@@ -12,7 +12,7 @@
 - 記事の作成、編集、削除
 - カテゴリ・タグ管理
 - 画像アップロード
-- 管理者・編集者権限管理
+- 管理者・編集者の権限管理
 
 ### コメントシステム
 - 記事へのコメント投稿
@@ -43,7 +43,7 @@
 - Next.js 14
 - TypeScript
 - Material-UI (MUI)
-- SWR（データフェッチング）
+- SWR (データフェッチング)
 - Tailwind CSS
 
 ## プロジェクト構成
@@ -86,9 +86,9 @@ npm run dev
 
 ## 開発環境URL
 
-- フロントエンド： http://localhost:3000
+- フロントエンド: http://localhost:3000
 - バックエンドAPI: http://localhost:8000
-- Django管理画面： http://localhost:8000/admin
+- Django管理画面: http://localhost:8000/admin
 
 ## 主要API エンドポイント
 
