@@ -8,8 +8,6 @@ class User(AbstractUser):
     ROLE_CHOICES = [
         ('admin', '管理者'),
         ('editor', '編集者'),
-        # ('author', '投稿者'),  # editorに統合
-        # ('reader', '読者'),  # 不要なため削除
     ]
     
     email = models.EmailField('メールアドレス', unique=True)
@@ -22,6 +20,10 @@ class User(AbstractUser):
     is_email_verified = models.BooleanField('メール認証済み', default=False)
     created_at = models.DateTimeField('作成日時', auto_now_add=True)
     updated_at = models.DateTimeField('更新日時', auto_now=True)
+    
+    # Django標準の権限システムを無効化
+    groups = None
+    user_permissions = None
     
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
