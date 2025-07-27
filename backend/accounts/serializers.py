@@ -122,6 +122,32 @@ class ChangePasswordSerializer(serializers.Serializer):
         return user
 
 
+class PasswordResetRequestSerializer(serializers.Serializer):
+    """パスワードリセット要求用シリアライザー"""
+    
+    email = serializers.EmailField()
+    
+    def validate_email(self, value):
+        try:
+            user = User.objects.get(email=value, is_active=True)
+        except User.DoesNotExist:
+            raise serializers.ValidationError("このメールアドレスは登録されていません。")
+        return value
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    """パスワードリセット実行用シリアライザー"""
+    
+    token = serializers.CharField()
+    new_password = serializers.CharField(write_only=True, validators=[validate_password])
+    new_password_confirm = serializers.CharField(write_only=True)
+    
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['new_password_confirm']:
+            raise serializers.ValidationError("パスワードが一致しません。")
+        return attrs
+
+
 class AdminUserSerializer(serializers.ModelSerializer):
     """管理者用ユーザーシリアライザー"""
     

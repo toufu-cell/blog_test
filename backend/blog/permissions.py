@@ -3,7 +3,7 @@ from rest_framework import permissions
 
 class IsAuthorOrReadOnly(permissions.BasePermission):
     """
-    著者本人または編集者以上のみが編集可能
+    著者本人または管理者のみが編集可能
     読み取りは制限なし
     """
     
@@ -12,8 +12,8 @@ class IsAuthorOrReadOnly(permissions.BasePermission):
         if request.method in permissions.SAFE_METHODS:
             return True
         
-        # 編集者以上は全ての記事を編集可能
-        if request.user.is_authenticated and request.user.is_editor:
+        # 管理者のみ全ての記事を編集可能
+        if request.user.is_authenticated and request.user.is_admin:
             return True
         
         # 著者本人のみが自分の記事を編集可能
@@ -37,7 +37,7 @@ class CanPublishOrReadOnly(permissions.BasePermission):
             
             # 'published' ステータスに変更しようとしている場合
             if new_status == 'published':
-                # 編集者以上のみが公開可能
+                # 管理者・編集者のみが公開可能（記事公開権限は維持）
                 if not (request.user.is_authenticated and request.user.can_publish):
                     return False
         

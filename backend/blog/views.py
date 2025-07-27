@@ -43,9 +43,7 @@ class TagViewSet(ModelViewSet):
         return super().get_permissions()
     
     def perform_create(self, serializer):
-        # 投稿者以上のみが作成可能
-        if not self.request.user.is_author:
-            raise permissions.PermissionDenied("タグの作成権限がありません。")
+        # 全認証ユーザーがタグ作成可能
         serializer.save()
 
 
@@ -65,31 +63,42 @@ class ArticleViewSet(ModelViewSet):
         queryset = Article.objects.all()
         user = self.request.user
         
-        if self.action in ['list', 'retrieve']:
+        # 管理画面での記事一覧表示の場合（認証が必要なアクション）
+        if self.action in ['list'] and user.is_authenticated:
+            if user.is_admin:
+                # 管理者のみ全ての記事を管理可能
+                return queryset
+            else:
+                # 編集者・投稿者は自分の記事のみ管理可能
+                return queryset.filter(author=user)
+        
+        # 記事詳細表示の場合
+        elif self.action == 'retrieve':
             if user.is_authenticated:
-                if user.is_editor:
-                    # 編集者は全ての記事を閲覧可能
+                if user.is_admin:
+                    # 管理者は全ての記事を閲覧可能
                     return queryset
-                elif user.is_author:
-                    # 投稿者は公開記事と自分の記事を閲覧可能
+                else:
+                    # 編集者は公開記事と自分の記事を閲覧可能
                     return queryset.filter(
                         Q(status='published') | Q(author=user)
                     )
-                else:
-                    # 読者は公開記事のみ
-                    return queryset.filter(status='published')
             else:
                 # 未認証ユーザーは公開記事のみ
                 return queryset.filter(status='published')
-        else:
-            # 作成・編集・削除は認証ユーザーのみ
+        
+        # 作成・編集・削除の場合
+        elif self.action in ['create', 'update', 'partial_update', 'destroy']:
             if user.is_authenticated:
-                if user.is_editor:
+                if user.is_admin:
+                    # 管理者のみ全ての記事を操作可能
                     return queryset
                 else:
+                    # 編集者は自分の記事のみ操作可能
                     return queryset.filter(author=user)
         
-        return queryset.none()
+        # その他のアクション（未認証時など）
+        return queryset.filter(status='published')
     
     def get_serializer_class(self):
         """アクションに応じてシリアライザーを変更"""
@@ -109,7 +118,7 @@ class ArticleViewSet(ModelViewSet):
     
     def perform_create(self, serializer):
         """記事作成時の処理"""
-        # 権限チェックは既にget_permissions()で実行されているため削除
+        # 全認証ユーザーが記事作成可能
         serializer.save(author=self.request.user)
     
     def retrieve(self, request, *args, **kwargs):
@@ -169,8 +178,8 @@ class ArticleViewSet(ModelViewSet):
     
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def toggle_featured(self, request, pk=None):
-        """記事の注目フラグを切り替え（編集者以上）"""
-        if not request.user.is_editor:
+        """記事の注目フラグを切り替え（管理者のみ）"""
+        if not request.user.is_admin:
             raise permissions.PermissionDenied("この操作の権限がありません。")
         
         article = self.get_object()
@@ -184,8 +193,8 @@ class ArticleViewSet(ModelViewSet):
     
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def toggle_pinned(self, request, pk=None):
-        """記事のピン留めフラグを切り替え（編集者以上）"""
-        if not request.user.is_editor:
+        """記事のピン留めフラグを切り替え（管理者のみ）"""
+        if not request.user.is_admin:
             raise permissions.PermissionDenied("この操作の権限がありません。")
         
         article = self.get_object()
@@ -535,4 +544,64 @@ def article_analytics(request, article_id):
         'daily_views': daily_views,
         'recent_comments': list(recent_comments),
         'related_articles': related_articles_data,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def dashboard_data(request):
+    """ダッシュボード用データ取得API"""
+    user = request.user
+    
+    # 最近の記事（自分の記事）
+    recent_articles = Article.objects.filter(
+        author=user
+    ).order_by('-created_at')[:5].values(
+        'id', 'title', 'slug', 'status', 'view_count', 
+        'like_count', 'created_at', 'published_at'
+    )
+    
+    # 最近のコメント（自分の記事に対するコメント）
+    recent_comments = Comment.objects.filter(
+        article__author=user,
+        is_approved=True
+    ).select_related('author', 'article').order_by('-created_at')[:5]
+    
+    # コメントデータの整形
+    comments_data = []
+    for comment in recent_comments:
+        comments_data.append({
+            'id': comment.id,
+            'content': comment.content[:100] + '...' if len(comment.content) > 100 else comment.content,
+            'author': {
+                'username': comment.author.username,
+                'avatar': comment.author.avatar.url if comment.author.avatar else None
+            },
+            'article': {
+                'id': comment.article.id,
+                'title': comment.article.title,
+                'slug': comment.article.slug
+            },
+            'created_at': comment.created_at
+        })
+    
+    # 統計情報
+    total_articles = Article.objects.filter(author=user).count()
+    published_articles = Article.objects.filter(author=user, status='published').count()
+    draft_articles = Article.objects.filter(author=user, status='draft').count()
+    total_views = Article.objects.filter(author=user).aggregate(Sum('view_count'))['view_count__sum'] or 0
+    total_likes = Article.objects.filter(author=user).aggregate(Sum('like_count'))['like_count__sum'] or 0
+    total_comments = Comment.objects.filter(article__author=user, is_approved=True).count()
+    
+    return Response({
+        'recent_articles': list(recent_articles),
+        'recent_comments': comments_data,
+        'stats': {
+            'total_articles': total_articles,
+            'published_articles': published_articles,
+            'draft_articles': draft_articles,
+            'total_views': total_views,
+            'total_likes': total_likes,
+            'total_comments': total_comments
+        }
     })

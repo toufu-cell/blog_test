@@ -11,6 +11,8 @@ from .views import (
     UserListView,
     UserViewSet,
     UserProfileDetailView,
+    PasswordResetRequestView,
+    PasswordResetConfirmView,
 )
 
 app_name = 'accounts'
@@ -25,6 +27,8 @@ urlpatterns = [
     path('auth/login/', UserLoginView.as_view(), name='login'),
     path('auth/logout/', UserLogoutView.as_view(), name='logout'),
     path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('auth/password-reset/', PasswordResetRequestView.as_view(), name='password-reset-request'),
+    path('auth/password-reset/confirm/', PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
     
     # ユーザープロフィール
     path('profile/', UserProfileView.as_view(), name='profile'),

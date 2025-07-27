@@ -261,9 +261,17 @@ export default function ArticlesManagePage() {
         <Container maxWidth="xl" sx={{ py: 4 }}>
             {/* ヘッダー */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-                <Typography variant="h4" component="h1">
-                    記事管理
-                </Typography>
+                <Box>
+                    <Typography variant="h4" component="h1">
+                        {user?.role === 'admin' ? '記事管理' : '自分の記事管理'}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        {user?.role === 'admin'
+                            ? 'サイト全体の記事を管理・公開できます'
+                            : '自分の記事を管理・公開できます'
+                        }
+                    </Typography>
+                </Box>
                 <Button
                     variant="contained"
                     startIcon={<Add />}
@@ -439,15 +447,20 @@ export default function ArticlesManagePage() {
 
                                         <TableCell>
                                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                                <Tooltip title="編集">
-                                                    <IconButton
-                                                        component={Link}
-                                                        href={`/admin/articles/${article.id}/edit`}
-                                                        size="small"
-                                                    >
-                                                        <Edit />
-                                                    </IconButton>
-                                                </Tooltip>
+                                                {/* 編集ボタン：自分の記事または管理者 */}
+                                                {(article.author.id === user?.id || user?.role === 'admin') && (
+                                                    <Tooltip title="編集">
+                                                        <IconButton
+                                                            component={Link}
+                                                            href={`/admin/articles/${article.id}/edit`}
+                                                            size="small"
+                                                        >
+                                                            <Edit />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                )}
+
+                                                {/* プレビューボタン：全員 */}
                                                 <Tooltip title="プレビュー">
                                                     <IconButton
                                                         component={Link}
@@ -458,12 +471,16 @@ export default function ArticlesManagePage() {
                                                         <Visibility />
                                                     </IconButton>
                                                 </Tooltip>
-                                                <IconButton
-                                                    onClick={(e) => handleMenuOpen(e, article)}
-                                                    size="small"
-                                                >
-                                                    <MoreVert />
-                                                </IconButton>
+
+                                                {/* その他のアクション：自分の記事または管理者 */}
+                                                {(article.author.id === user?.id || user?.role === 'admin') && (
+                                                    <IconButton
+                                                        onClick={(e) => handleMenuOpen(e, article)}
+                                                        size="small"
+                                                    >
+                                                        <MoreVert />
+                                                    </IconButton>
+                                                )}
                                             </Box>
                                         </TableCell>
                                     </TableRow>
@@ -492,30 +509,38 @@ export default function ArticlesManagePage() {
                 open={Boolean(anchorEl)}
                 onClose={handleMenuClose}
             >
-                <MenuItem onClick={() => selectedArticle && handleToggleFeatured(selectedArticle)}>
-                    <ListItemIcon>
-                        {selectedArticle?.is_featured ? <StarBorder /> : <Star />}
-                    </ListItemIcon>
-                    <ListItemText>
-                        {selectedArticle?.is_featured ? '注目解除' : '注目設定'}
-                    </ListItemText>
-                </MenuItem>
+                {/* 注目設定・ピン留めは管理者のみ */}
+                {user?.role === 'admin' && (
+                    <>
+                        <MenuItem onClick={() => selectedArticle && handleToggleFeatured(selectedArticle)}>
+                            <ListItemIcon>
+                                {selectedArticle?.is_featured ? <StarBorder /> : <Star />}
+                            </ListItemIcon>
+                            <ListItemText>
+                                {selectedArticle?.is_featured ? '注目解除' : '注目設定'}
+                            </ListItemText>
+                        </MenuItem>
 
-                <MenuItem onClick={() => selectedArticle && handleTogglePin(selectedArticle)}>
-                    <ListItemIcon>
-                        <PushPin />
-                    </ListItemIcon>
-                    <ListItemText>
-                        {selectedArticle?.is_pinned ? 'ピン解除' : 'ピン留め'}
-                    </ListItemText>
-                </MenuItem>
+                        <MenuItem onClick={() => selectedArticle && handleTogglePin(selectedArticle)}>
+                            <ListItemIcon>
+                                <PushPin />
+                            </ListItemIcon>
+                            <ListItemText>
+                                {selectedArticle?.is_pinned ? 'ピン解除' : 'ピン留め'}
+                            </ListItemText>
+                        </MenuItem>
+                    </>
+                )}
 
-                <MenuItem onClick={() => selectedArticle && handleDeleteClick(selectedArticle)}>
-                    <ListItemIcon>
-                        <Delete color="error" />
-                    </ListItemIcon>
-                    <ListItemText>削除</ListItemText>
-                </MenuItem>
+                {/* 削除は自分の記事または管理者 */}
+                {(selectedArticle?.author.id === user?.id || user?.role === 'admin') && (
+                    <MenuItem onClick={() => selectedArticle && handleDeleteClick(selectedArticle)}>
+                        <ListItemIcon>
+                            <Delete color="error" />
+                        </ListItemIcon>
+                        <ListItemText>削除</ListItemText>
+                    </MenuItem>
+                )}
             </Menu>
 
             {/* 削除確認ダイアログ */}

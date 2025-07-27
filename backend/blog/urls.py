@@ -8,6 +8,7 @@ from .views import (
     user_analytics,
     site_analytics,
     article_analytics,
+    dashboard_data,
 )
 
 app_name = 'blog'
@@ -26,6 +27,7 @@ urlpatterns = [
     path('analytics/user/', user_analytics, name='user-analytics'),
     path('analytics/site/', site_analytics, name='site-analytics'),
     path('analytics/article/<int:article_id>/', article_analytics, name='article-analytics'),
+    path('dashboard/', dashboard_data, name='dashboard-data'),
     
     # 管理API（認証必要）
     path('', include(router.urls)),

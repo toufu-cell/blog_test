@@ -19,14 +19,11 @@ import {
     Divider,
     IconButton,
     InputAdornment,
-    FormControlLabel,
-    Checkbox,
+
 } from '@mui/material'
 import {
     Visibility,
     VisibilityOff,
-    Google,
-    GitHub,
 } from '@mui/icons-material'
 import { useAuth } from '@/lib/contexts/AuthContext'
 import { RegisterData } from '@/types'
@@ -59,7 +56,7 @@ export default function RegisterPage() {
     const { register: registerUser, isAuthenticated, isLoading, error, clearError } = useAuth()
     const [showPassword, setShowPassword] = useState(false)
     const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-    const [agreeTerms, setAgreeTerms] = useState(false)
+
 
     const {
         register,
@@ -84,10 +81,6 @@ export default function RegisterPage() {
     }, [clearError])
 
     const onSubmit = async (data: RegisterData) => {
-        if (!agreeTerms) {
-            return
-        }
-
         try {
             await registerUser(data)
             router.push('/dashboard')
@@ -222,36 +215,14 @@ export default function RegisterPage() {
                                 }}
                             />
 
-                            {/* 利用規約チェックボックス */}
-                            <FormControlLabel
-                                control={
-                                    <Checkbox
-                                        checked={agreeTerms}
-                                        onChange={(e) => setAgreeTerms(e.target.checked)}
-                                        color="primary"
-                                    />
-                                }
-                                label={
-                                    <Typography variant="body2">
-                                        <Link href="/terms" style={{ color: 'inherit' }}>
-                                            利用規約
-                                        </Link>
-                                        {' '}と{' '}
-                                        <Link href="/privacy" style={{ color: 'inherit' }}>
-                                            プライバシーポリシー
-                                        </Link>
-                                        に同意する
-                                    </Typography>
-                                }
-                                sx={{ mb: 2 }}
-                            />
+
 
                             <Button
                                 type="submit"
                                 fullWidth
                                 variant="contained"
                                 size="large"
-                                disabled={isSubmitting || !agreeTerms}
+                                disabled={isSubmitting}
                                 sx={{ mb: 2 }}
                             >
                                 {isSubmitting ? (
@@ -262,37 +233,7 @@ export default function RegisterPage() {
                             </Button>
                         </Box>
 
-                        <Divider sx={{ my: 3 }}>
-                            <Typography variant="body2" color="text.secondary">
-                                または
-                            </Typography>
-                        </Divider>
 
-                        {/* ソーシャル登録 */}
-                        <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-                            <Button
-                                fullWidth
-                                variant="outlined"
-                                startIcon={<Google />}
-                                onClick={() => {
-                                    // Google OAuth実装予定
-                                    console.log('Google register')
-                                }}
-                            >
-                                Google
-                            </Button>
-                            <Button
-                                fullWidth
-                                variant="outlined"
-                                startIcon={<GitHub />}
-                                onClick={() => {
-                                    // GitHub OAuth実装予定
-                                    console.log('GitHub register')
-                                }}
-                            >
-                                GitHub
-                            </Button>
-                        </Box>
 
                         {/* ログインリンク */}
                         <Box sx={{ textAlign: 'center' }}>

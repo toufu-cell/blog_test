@@ -176,7 +176,7 @@ export default function CommentItem({
                                 {comment.author.username}
                             </Typography>
 
-                            {comment.author.role !== 'reader' && (
+                            {comment.author.role === 'admin' && (
                                 <Chip
                                     label={comment.author.role}
                                     size="small"

@@ -23,8 +23,6 @@ import {
 import {
     Visibility,
     VisibilityOff,
-    Google,
-    GitHub,
 } from '@mui/icons-material'
 import { useAuth } from '@/lib/contexts/AuthContext'
 import { LoginData } from '@/types'
@@ -74,7 +72,6 @@ export default function LoginPage() {
                 // 最終手段: 2秒後にページ全体をリロード
                 setTimeout(() => {
                     if (window.location.pathname !== '/dashboard') {
-                        console.log('強制リダイレクト実行')
                         window.location.replace('/dashboard')
                     }
                 }, 2000)
@@ -225,37 +222,7 @@ export default function LoginPage() {
                             </Link>
                         </Box>
 
-                        <Divider sx={{ my: 3 }}>
-                            <Typography variant="body2" color="text.secondary">
-                                または
-                            </Typography>
-                        </Divider>
 
-                        {/* ソーシャルログイン */}
-                        <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-                            <Button
-                                fullWidth
-                                variant="outlined"
-                                startIcon={<Google />}
-                                onClick={() => {
-                                    // Google OAuth実装予定
-                                    console.log('Google login')
-                                }}
-                            >
-                                Google
-                            </Button>
-                            <Button
-                                fullWidth
-                                variant="outlined"
-                                startIcon={<GitHub />}
-                                onClick={() => {
-                                    // GitHub OAuth実装予定
-                                    console.log('GitHub login')
-                                }}
-                            >
-                                GitHub
-                            </Button>
-                        </Box>
 
                         {/* 新規登録リンク */}
                         <Box sx={{ textAlign: 'center' }}>

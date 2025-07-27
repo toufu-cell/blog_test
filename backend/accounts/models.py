@@ -8,12 +8,12 @@ class User(AbstractUser):
     ROLE_CHOICES = [
         ('admin', '管理者'),
         ('editor', '編集者'),
-        ('author', '投稿者'),
-        ('reader', '読者'),
+        # ('author', '投稿者'),  # editorに統合
+        # ('reader', '読者'),  # 不要なため削除
     ]
     
     email = models.EmailField('メールアドレス', unique=True)
-    role = models.CharField('権限', max_length=10, choices=ROLE_CHOICES, default='reader')
+    role = models.CharField('権限', max_length=10, choices=ROLE_CHOICES, default='editor')
     bio = models.TextField('自己紹介', blank=True, max_length=500)
     avatar = models.ImageField('アバター', upload_to='avatars/', blank=True, null=True)
     website = models.URLField('ウェブサイト', blank=True)
@@ -44,15 +44,17 @@ class User(AbstractUser):
     
     @property
     def is_author(self):
-        return self.role in ['admin', 'editor', 'author']
+        # 全ユーザーが記事投稿可能（editorに統合）
+        return self.role in ['admin', 'editor']
     
     @property
     def can_publish(self):
+        # 全ユーザーが記事公開可能
         return self.role in ['admin', 'editor']
     
     @property
     def can_delete_others_posts(self):
-        return self.role in ['admin', 'editor']
+        return self.role == 'admin'
 
 
 class UserProfile(models.Model):

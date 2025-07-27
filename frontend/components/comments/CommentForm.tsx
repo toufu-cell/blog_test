@@ -61,9 +61,6 @@ export default function CommentForm({
                 ...(parentId && { parent: parentId })
             }
 
-            console.log('コメント投稿データ:', commentData)
-            console.log('ユーザー情報:', user)
-
             await createComment(commentData)
             setContent('')
             onSuccess?.()
@@ -195,11 +192,7 @@ export default function CommentForm({
                         </Box>
                     </Box>
 
-                    {user.role === 'reader' && (
-                        <Alert severity="info" sx={{ mt: 2 }}>
-                            コメントは承認後に表示されます
-                        </Alert>
-                    )}
+                    {/* 全ユーザーが投稿者権限を持つため、承認メッセージは削除 */}
                 </Box>
             </CardContent>
         </Card>

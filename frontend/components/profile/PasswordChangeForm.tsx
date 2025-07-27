@@ -106,16 +106,30 @@ export default function PasswordChangeForm({ onSuccess, onCancel }: PasswordChan
             }, 2000)
         } catch (err: any) {
             console.error('Password change error:', err)
+
             if (err.response?.data?.message) {
                 setError(err.response.data.message)
-            } else if (err.response?.data?.field_errors) {
-                const fieldErrors = err.response.data.field_errors
-                const errorMessages = Object.values(fieldErrors).flat().join(', ')
-                setError(errorMessages)
+            } else if (err.response?.data?.old_password) {
+                setError('現在のパスワードが正しくありません。')
+            } else if (err.response?.data?.new_password) {
+                const passwordErrors = Array.isArray(err.response.data.new_password)
+                    ? err.response.data.new_password
+                    : [err.response.data.new_password]
+                setError(`新しいパスワードに問題があります: ${passwordErrors.join(', ')}`)
+            } else if (err.response?.data?.new_password_confirm) {
+                setError('パスワード確認が一致していません。')
             } else if (err.response?.data?.non_field_errors) {
                 setError(err.response.data.non_field_errors.join(', '))
+            } else if (err.response?.status === 401) {
+                setError('認証が無効です。再度ログインしてください。')
+            } else if (err.response?.status === 403) {
+                setError('この操作を実行する権限がありません。')
+            } else if (err.response?.status === 429) {
+                setError('リクエストが多すぎます。しばらく時間をおいてから再度お試しください。')
+            } else if (err.response?.status >= 500) {
+                setError('サーバーエラーが発生しました。しばらく時間をおいてから再度お試しください。')
             } else {
-                setError('パスワードの変更に失敗しました')
+                setError('パスワードの変更に失敗しました。入力内容をご確認ください。')
             }
         } finally {
             setLoading(false)
@@ -153,7 +167,7 @@ export default function PasswordChangeForm({ onSuccess, onCancel }: PasswordChan
                 <form onSubmit={handleSubmit(onSubmit)}>
                     <Grid container spacing={3}>
                         {/* 現在のパスワード */}
-                        <Grid item xs={12}>
+                        <Grid size={{ xs: 12 }}>
                             <Controller
                                 name="old_password"
                                 control={control}
@@ -185,7 +199,7 @@ export default function PasswordChangeForm({ onSuccess, onCancel }: PasswordChan
                         </Grid>
 
                         {/* 新しいパスワード */}
-                        <Grid item xs={12}>
+                        <Grid size={{ xs: 12 }}>
                             <Controller
                                 name="new_password"
                                 control={control}
@@ -217,7 +231,7 @@ export default function PasswordChangeForm({ onSuccess, onCancel }: PasswordChan
                         </Grid>
 
                         {/* パスワード確認 */}
-                        <Grid item xs={12}>
+                        <Grid size={{ xs: 12 }}>
                             <Controller
                                 name="new_password_confirm"
                                 control={control}

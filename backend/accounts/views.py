@@ -1,4 +1,9 @@
 from django.shortcuts import render
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
+from django.core.mail import send_mail
+from django.conf import settings
 from rest_framework import generics, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -6,6 +11,7 @@ from rest_framework.viewsets import ModelViewSet
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.contrib.auth import logout
+import logging
 from .models import User, UserProfile
 from .serializers import (
     UserRegistrationSerializer,
@@ -14,8 +20,12 @@ from .serializers import (
     UserUpdateSerializer,
     ChangePasswordSerializer,
     AdminUserSerializer,
-    UserProfileSerializer
+    UserProfileSerializer,
+    PasswordResetRequestSerializer,
+    PasswordResetConfirmSerializer
 )
+
+logger = logging.getLogger(__name__)
 
 
 class UserRegistrationView(generics.CreateAPIView):
@@ -93,7 +103,7 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
         return UserSerializer
 
 
-class ChangePasswordView(generics.UpdateAPIView):
+class ChangePasswordView(generics.GenericAPIView):
     """パスワード変更API"""
     
     serializer_class = ChangePasswordSerializer
@@ -102,10 +112,17 @@ class ChangePasswordView(generics.UpdateAPIView):
     def get_object(self):
         return self.request.user
     
-    def update(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
+        logger.info(f"Password change request data: {request.data}")
+        logger.info(f"User: {request.user}")
+        
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            logger.error(f"Password change validation errors: {serializer.errors}")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
         serializer.save()
+        logger.info(f"Password changed successfully for user: {request.user}")
         return Response({'message': 'パスワードが変更されました。'})
 
 
@@ -197,3 +214,92 @@ class UserProfileDetailView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         profile, created = UserProfile.objects.get_or_create(user=self.request.user)
         return profile
+
+
+class PasswordResetRequestView(generics.GenericAPIView):
+    """パスワードリセット要求API"""
+    
+    serializer_class = PasswordResetRequestSerializer
+    permission_classes = [permissions.AllowAny]
+    
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        email = serializer.validated_data['email']
+        user = User.objects.get(email=email, is_active=True)
+        
+        # トークンとuidを生成
+        token = default_token_generator.make_token(user)
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        
+        # デモ用にトークンをログ出力（本番環境では削除）
+        reset_link = f"http://localhost:3000/auth/reset-password?uid={uid}&token={token}"
+        logger.info(f"Password reset link for {email}: {reset_link}")
+        
+        # 本番環境では実際にメールを送信
+        try:
+            # メール送信の設定があればメールを送信
+            if hasattr(settings, 'EMAIL_HOST') and settings.EMAIL_HOST:
+                send_mail(
+                    subject='パスワードリセットのご案内',
+                    message=f'以下のリンクからパスワードをリセットしてください:\n{reset_link}',
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[email],
+                    fail_silently=False,
+                )
+                logger.info(f"Password reset email sent to {email}")
+        except Exception as e:
+            logger.error(f"Failed to send email to {email}: {str(e)}")
+        
+        return Response({
+            'message': 'パスワードリセットの案内をメールアドレスに送信しました。',
+            # デモ用: 本番環境では以下の行を削除
+            'reset_link': reset_link if settings.DEBUG else None
+        }, status=status.HTTP_200_OK)
+
+
+class PasswordResetConfirmView(generics.GenericAPIView):
+    """パスワードリセット実行API"""
+    
+    serializer_class = PasswordResetConfirmSerializer
+    permission_classes = [permissions.AllowAny]
+    
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        # URLパラメータまたはボディからuidとtokenを取得
+        uid = request.data.get('uid') or request.query_params.get('uid')
+        token = serializer.validated_data['token']
+        new_password = serializer.validated_data['new_password']
+        
+        if not uid:
+            return Response({
+                'error': 'ユーザーIDが必要です。'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            # uidからユーザーIDをデコード
+            user_id = force_str(urlsafe_base64_decode(uid))
+            user = User.objects.get(pk=user_id, is_active=True)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            return Response({
+                'error': '無効なリセットリンクです。'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # トークンの検証
+        if not default_token_generator.check_token(user, token):
+            return Response({
+                'error': 'リセットトークンが無効または期限切れです。'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # パスワードを更新
+        user.set_password(new_password)
+        user.save()
+        
+        logger.info(f"Password reset completed for user {user.email}")
+        
+        return Response({
+            'message': 'パスワードが正常にリセットされました。新しいパスワードでログインしてください。'
+        }, status=status.HTTP_200_OK)

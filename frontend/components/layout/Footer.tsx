@@ -4,15 +4,8 @@ import {
     Box,
     Container,
     Typography,
-    IconButton,
     Divider,
 } from '@mui/material'
-import {
-    GitHub,
-    Twitter,
-    Email,
-    RssFeed,
-} from '@mui/icons-material'
 
 const Footer: React.FC = () => {
     const currentYear = new Date().getFullYear()
@@ -66,11 +59,6 @@ const Footer: React.FC = () => {
                                     記事一覧
                                 </Typography>
                             </Link>
-                            <Link href="/categories" style={{ color: 'inherit', textDecoration: 'none' }}>
-                                <Typography variant="body2" color="grey.400" sx={{ '&:hover': { color: 'white' } }}>
-                                    カテゴリ
-                                </Typography>
-                            </Link>
                             <Link href="/about" style={{ color: 'inherit', textDecoration: 'none' }}>
                                 <Typography variant="body2" color="grey.400" sx={{ '&:hover': { color: 'white' } }}>
                                     このサイトについて
@@ -108,53 +96,7 @@ const Footer: React.FC = () => {
                         </Box>
                     </Box>
 
-                    {/* ソーシャルメディア */}
-                    <Box>
-                        <Typography variant="h6" component="h3" gutterBottom>
-                            フォローする
-                        </Typography>
-                        <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-                            <IconButton
-                                component="a"
-                                href="#"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                sx={{ color: 'grey.400', '&:hover': { color: 'white' } }}
-                            >
-                                <GitHub />
-                            </IconButton>
-                            <IconButton
-                                component="a"
-                                href="#"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                sx={{ color: 'grey.400', '&:hover': { color: 'white' } }}
-                            >
-                                <Twitter />
-                            </IconButton>
-                            <IconButton
-                                component="a"
-                                href="#"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                sx={{ color: 'grey.400', '&:hover': { color: 'white' } }}
-                            >
-                                <Email />
-                            </IconButton>
-                            <IconButton
-                                component="a"
-                                href="/rss"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                sx={{ color: 'grey.400', '&:hover': { color: 'white' } }}
-                            >
-                                <RssFeed />
-                            </IconButton>
-                        </Box>
-                        <Typography variant="body2" color="grey.400">
-                            最新の記事やお知らせを受け取る
-                        </Typography>
-                    </Box>
+
                 </Box>
 
                 <Divider sx={{ my: 4, borderColor: 'grey.700' }} />
@@ -173,19 +115,9 @@ const Footer: React.FC = () => {
                         © {currentYear} Blog CMS. All rights reserved.
                     </Typography>
                     <Box sx={{ display: 'flex', gap: 3 }}>
-                        <Link href="/privacy" style={{ color: 'inherit', textDecoration: 'none' }}>
+                        <Link href="/about" style={{ color: 'inherit', textDecoration: 'none' }}>
                             <Typography variant="body2" color="grey.400" sx={{ '&:hover': { color: 'white' } }}>
-                                プライバシーポリシー
-                            </Typography>
-                        </Link>
-                        <Link href="/terms" style={{ color: 'inherit', textDecoration: 'none' }}>
-                            <Typography variant="body2" color="grey.400" sx={{ '&:hover': { color: 'white' } }}>
-                                利用規約
-                            </Typography>
-                        </Link>
-                        <Link href="/contact" style={{ color: 'inherit', textDecoration: 'none' }}>
-                            <Typography variant="body2" color="grey.400" sx={{ '&:hover': { color: 'white' } }}>
-                                お問い合わせ
+                                このサイトについて
                             </Typography>
                         </Link>
                     </Box>
